@@ -22,7 +22,7 @@ SHEET_AREA = {'plate' : (2500*1250),
 BOM_template = "Boom Boom version 996323"
 
 TESTING = True 
-TEST_FILE = "/home/boomatang/Projects/WorkScripts/Data/Large Bom File.xlsx"
+TEST_FILE = "/home/boomatang/Projects/WorkScripts/Temp/BOM_test_file.xlsx"
 # Some database set up stuff
 db = Database()
 
@@ -403,6 +403,7 @@ class BOM_Workbook():
 
         self.material_heading_row = 6
         self.overview_data_first_column = 2
+        self.start_row = None
         
         self.wb = Workbook()
         self.cover = self.set_cover_page()
@@ -464,10 +465,60 @@ class BOM_Workbook():
         self.enter_plates_used()
 
     def enter_plates_used(self):
-        start_row = self.max_nmber_of_rows() + 2
+        self.start_row = self.max_number_of_rows() + 2
+        self.add_plate_header_information()
+
+    def add_plate_header_information(self):
+
+        print(self.plate)
+        print("\t\there is the starting row {}".format(self.start_row))
+        self.add_plate_warning_massage()
+        headings = ['Plate Thickness', 'No. of Sheets (8x4)']
+        self.set_material_headings(self.start_row, self.overview_data_first_column, headings)
+        self.start_row += 1
+        self.show_plate_used()
+
+    def show_plate_used(self):
+        plates = self.format_overview_plate_data()
+
+        def plate_sort(x):
+            return x[0]
+
+        plates.sort(key=plate_sort)
+
+        for plate in plates:
+            print(plate)
+            self.add_plate_overview_entry(plate)
+
+    def add_plate_overview_entry(self, plate):
+        column = self.overview_data_first_column
+        for item in plate:
+            cell = self.cover.cell(row=self.start_row, column=column)
+            if column == self.overview_data_first_column:
+                cell.value = str(item) + 'mm'
+            else:
+                cell.value = item
+            column += 1
+        self.start_row += 1
+
+    def format_overview_plate_data(self):
+        output = []
+
+        for item in self.plate[1].items():
+            output.append(item)
+
+        return output
+
+    def add_plate_warning_massage(self):
+        massage = "The plate usage is taken from the bounding box of the part in question. This means that the nested usage maybe much lower. Also this is worked outed by using the area of the bounding boxes, no allowaces is give for part sizes. For these reason this should be used as a guide only."
+
+        self.cover.cell(column=self.overview_data_first_column, row=self.start_row).value = massage
+        self.start_row += 2
+
 
     def max_number_of_rows(self):
-        pass
+        return self.cover.max_row
+
 
     def set_base_file(self):
         self.cover['A1'] = "Base File"
@@ -489,8 +540,9 @@ class BOM_Workbook():
         self.set_material_headings(heading_row, start_column)
         self.show_material_overview(heading_row + 1, start_column)
 
-    def set_material_headings(self, row, col):
-        headings = ["Materials", "Length", "QTY", "Usage Percentage"]
+    def set_material_headings(self, row, col, headings=None):
+        if headings is None:
+            headings = ["Materials", "Length", "QTY", "Usage Percentage"]
         start_column = col
         for heading in headings:
             self.cover.cell(row=row, column=start_column).value = heading 
@@ -547,10 +599,6 @@ def run():
     special_data = special
 
     plate_data = work_with_plates(plates)
-    
-    for plates in plate_data:
-        print(plates)
-        print()
 
     print('Plate data collected..')
 
