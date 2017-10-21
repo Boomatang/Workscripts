@@ -22,7 +22,7 @@ SHEET_AREA = {'plate' : (2500*1250),
 BOM_template = "Boom Boom version 996323"
 
 TESTING = True 
-TEST_FILE = "/home/boomatang/Projects/WorkScripts/Temp/BOM_test_file.xlsx"
+TEST_FILE = "/home/boomatang/Projects/WorkScripts/Temp/Broken_test_flie.xlsx"
 # Some database set up stuff
 db = Database()
 
@@ -134,6 +134,7 @@ def get_file_path():
     if TESTING:
         print('In test mode, user input ingored')
         output = TEST_FILE
+        print(TEST_FILE)
     output = Path(trim_name(output))
     if not output.is_file():
         print("Please start again and enter a real file path!")
@@ -298,17 +299,22 @@ def sort_BOM(bom):
 
 def refine_plates(plates):
     output = {}
+    to_remove = []
 
     for plate in plates.keys():
-        output[plate] = {
-                'description': plates[plate][0]['description'],
-                'total area':  plates[plate][0]['bounding_length']*plates[plate][0]['bounding_width'],
-                'size': '{} x {}'.format(plates[plate][0]['bounding_length'],plates[plate][0]['bounding_width']),
-                'thickness': plates[plate][0]['bounding_thickness'],
-                'qty': 0
-                    }
-        for unit in plates[plate]:
-            output[plate]['qty'] += unit['qty']
+        try:
+            output[plate] = {
+                    'description': plates[plate][0]['description'],
+                    'total area':  plates[plate][0]['bounding_length']*plates[plate][0]['bounding_width'],
+                    'size': '{} x {}'.format(plates[plate][0]['bounding_length'],plates[plate][0]['bounding_width']),
+                    'thickness': plates[plate][0]['bounding_thickness'],
+                    'qty': 0
+                        }
+            for unit in plates[plate]:
+                output[plate]['qty'] += unit['qty']
+        except TypeError:
+            print("Plate error found with {}.".format(plate))
+    
     return output
 
 def plate_area_by_thickness(plates):
@@ -343,11 +349,18 @@ def percentage(whole, part):
 def flip_percentage(percentage_value):
     return round(100 - percentage_value, 3)
 
+def remove_possible_lenght_errors(sections):
+    output = []
+    for section in sections:
+        if section['length'] is not None:
+            output.append(section)
+    return output
+
 def work_out_beam_cuts(sections, length):
     beams = []
     checked = 0
     counter = 1000
-
+    sections = remove_possible_lenght_errors(sections)
     def item_length(x):
         return float(x['length'])
 
@@ -469,9 +482,6 @@ class BOM_Workbook():
         self.add_plate_header_information()
 
     def add_plate_header_information(self):
-
-        print(self.plate)
-        print("\t\there is the starting row {}".format(self.start_row))
         self.add_plate_warning_massage()
         headings = ['Plate Thickness', 'No. of Sheets (8x4)']
         self.set_material_headings(self.start_row, self.overview_data_first_column, headings)
@@ -487,7 +497,6 @@ class BOM_Workbook():
         plates.sort(key=plate_sort)
 
         for plate in plates:
-            print(plate)
             self.add_plate_overview_entry(plate)
 
     def add_plate_overview_entry(self, plate):
